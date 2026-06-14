@@ -194,9 +194,10 @@ docker run --name aredn-builder arednmesh/builder bash -lc '
   make MAINTARGET=ath79 SUBTARGET=tiny MAKE_ARGS="-j$(nproc)" &&
   mkdir -p ~/out && cp -v firmware/targets/ath79/tiny/*-squashfs-*.bin ~/out/
 '
-# pull the finished images out from the host side, then discard the container + build tree
+# pull the finished images out from the host side
 docker cp aredn-builder:/home/aredn/out/. aredn-out/
-docker rm aredn-builder
+ls -la aredn-out/          # confirm the .bin files are really here ...
+docker rm aredn-builder    # ... and only then discard the container + build tree
 ```
 
 When it finishes, the images are in `./aredn-out/` and the container (with its
@@ -204,8 +205,18 @@ entire build tree) is gone. `MAKE_ARGS="-j$(nproc)"` builds in parallel across a
 CPU cores — the single biggest speedup (see the **Notes** under the all-targets
 recipe below). To build a different target, change the `make` line and the
 `cp` source path (for example `SUBTARGET=generic` →
-`firmware/targets/ath79/generic/`). On WSL this requires Docker Desktop with the
-WSL2 backend (or Docker installed inside the WSL distro).
+`firmware/targets/ath79/generic/`).
+
+> **On WSL, point the output dir at the Linux filesystem, not `/mnt/c`.** The
+> build itself runs inside the container, but `docker cp` (via Docker Desktop)
+> cannot reliably write into a Windows drive mounted at `/mnt/c/...` and fails
+> with `permission denied`. Run from a Linux-filesystem path (e.g. `cd ~` and use
+> `aredn-out` there), and **verify the `ls -la aredn-out/` output before running
+> `docker rm`** — otherwise a failed copy plus an eager `docker rm` throws away
+> the whole build. To get the images into Windows afterward, copy them across once
+> they are safely extracted (`cp ~/aredn-out/*.bin /mnt/c/Users/<you>/...`) or open
+> `\\wsl$\<distro>\home\<you>\aredn-out` in File Explorer. This needs Docker
+> Desktop with the WSL2 backend (or Docker installed inside the WSL distro).
 
 #### Building all targets at once
 
@@ -248,9 +259,10 @@ docker run --name aredn-builder arednmesh/builder bash -lc '
   # stage every built image into a directory inside the container
   mkdir -p ~/out && cp -rv firmware/targets/* ~/out/
 '
-# pull the whole tree out from the host side, then discard the container + build tree
+# pull the whole tree out from the host side
 docker cp aredn-builder:/home/aredn/out/. aredn-out/
-docker rm aredn-builder
+ls -la aredn-out/          # confirm the images are really here ...
+docker rm aredn-builder    # ... and only then discard the container + build tree
 ```
 
 Notes:
@@ -267,6 +279,10 @@ Notes:
   build in a RAM disk by adding `--tmpfs /home/aredn:exec,size=32g` to `docker
   run` (the mount **must** be `exec`). Note these throwaway builds keep no cache,
   so each run re-downloads sources and rebuilds the toolchain.
+* **On WSL**, use a Linux-filesystem output dir (e.g. `aredn-out` under `~`), not a
+  `/mnt/c/...` Windows path — `docker cp` fails with `permission denied` writing to
+  the Windows drive — and verify `ls -la aredn-out/` before `docker rm` (see the
+  single-target recipe's WSL note above).
 * The `&&` between lines aborts the whole run on the first failure. Use `;`
   instead if you would rather build best-effort and keep going past a target that
   fails, then copy out whatever succeeded.
