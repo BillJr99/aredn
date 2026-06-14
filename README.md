@@ -218,6 +218,42 @@ recipe below). To build a different target, change the `make` line and the
 > `\\wsl$\<distro>\home\<you>\aredn-out` in File Explorer. This needs Docker
 > Desktop with the WSL2 backend (or Docker installed inside the WSL distro).
 
+#### Iterating on a build (fast rebuilds & recovering a failed run)
+
+The recipe above removes the container at the end, which means every fresh
+`docker run` rebuilds the cross-toolchain from scratch — slow. If you expect to
+build more than once (tweaking a `configs/*.config`, or a build failed partway),
+**keep the container** by simply *not* running the final `docker rm`. All the
+expensive state — the toolchain, the `dl/` download cache, and every compiled
+package — lives in `~/aredn-build` inside it, so the next build only recompiles
+what changed.
+
+A `docker run` container stops when its command finishes (it is **not** deleted
+without `--rm`). Reuse the *same* container with `docker start` + `docker exec` —
+do **not** `docker run` again, and do **not** re-clone:
+
+```
+bash
+# rebuild in the existing tree (reuses toolchain + downloads + compiled objects)
+docker start aredn-builder
+docker exec aredn-builder bash -lc '
+  cd ~/aredn-build &&
+  git pull &&
+  make MAINTARGET=ath79 SUBTARGET=tiny MAKE_ARGS="-j$(nproc)"
+'
+# re-extract whatever you need, e.g.
+docker cp aredn-builder:/home/aredn/aredn-build/firmware/targets/ath79/tiny/. aredn-out/
+
+# when you are completely finished, reclaim the (tens of GB of) space:
+docker rm -f aredn-builder
+```
+
+Caveat: incremental rebuilds only recover *configuration* changes cleanly. A build
+interrupted mid-compile (Ctrl-C, out-of-memory, power loss) can leave the OpenWrt
+tree half-built in a way `make` will not untangle; if a reused build starts
+erroring oddly, scrap it (`docker rm -f aredn-builder`) and start fresh from the
+single-target recipe above.
+
 #### Building all targets at once
 
 Each `make` invocation reconfigures and builds one target into the shared
