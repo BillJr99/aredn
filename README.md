@@ -168,30 +168,42 @@ vi config.mk              # enter your callsign, etc.
 make MAINTARGET=ath79 SUBTARGET=tiny   # or any other target
 ```
 
-#### One-shot, no-trace build with Docker (`--rm`)
+#### One-shot, no-trace build with Docker
 
 If you would rather not install the prerequisites or leave a ~10GB build tree on
 your machine, build inside a throwaway container. Everything (the clone, the
-OpenWrt tree, all intermediate files) lives inside the container and is deleted
-when it exits because of `--rm`; only the finished `.bin` images are copied to a
-folder you mount from the host. This works the same from WSL, Linux, or macOS:
+OpenWrt tree, all intermediate files) lives inside the container; only the
+finished `.bin` images are pulled out, and the container is deleted at the end,
+so nothing is left behind. This works the same from WSL, Linux, or macOS.
+
+The build runs as the image's unprivileged `aredn` user (OpenWrt refuses to build
+as `root`), which cannot write into a host bind-mount. So instead of mounting a
+folder, build in a **named** container, stage the images to a directory *inside*
+it, then copy them to the host with `docker cp` (which runs with host
+privileges). Keeping build and extraction separate also means a copy error can't
+throw away a long build:
 
 ```
 bash
-# a host folder to receive the images; nothing else is written to the host
 mkdir -p aredn-out
-docker run --rm -v "$PWD/aredn-out:/out" arednmesh/builder bash -lc '
+# build in a named container (no --rm yet, so the images survive if a later step fails)
+docker run --name aredn-builder arednmesh/builder bash -lc '
   git clone --branch mcar/tiny-xm \
     https://github.com/BillJr99/aredn.git ~/aredn-build &&
   cd ~/aredn-build &&
-  make MAINTARGET=ath79 SUBTARGET=tiny &&
-  cp -v firmware/targets/ath79/tiny/*-squashfs-*.bin /out/
+  make MAINTARGET=ath79 SUBTARGET=tiny MAKE_ARGS="-j$(nproc)" &&
+  mkdir -p ~/out && cp -v firmware/targets/ath79/tiny/*-squashfs-*.bin ~/out/
 '
+# pull the finished images out from the host side, then discard the container + build tree
+docker cp aredn-builder:/home/aredn/out/. aredn-out/
+docker rm aredn-builder
 ```
 
 When it finishes, the images are in `./aredn-out/` and the container (with its
-entire build tree) is gone. To build a different target, change the `make` line
-and the `cp` source path (for example `SUBTARGET=generic` →
+entire build tree) is gone. `MAKE_ARGS="-j$(nproc)"` builds in parallel across all
+CPU cores — the single biggest speedup (see the **Notes** under the all-targets
+recipe below). To build a different target, change the `make` line and the
+`cp` source path (for example `SUBTARGET=generic` →
 `firmware/targets/ath79/generic/`). On WSL this requires Docker Desktop with the
 WSL2 backend (or Docker installed inside the WSL distro).
 
@@ -205,45 +217,56 @@ does) and copying the whole `targets/` tree out at the end:
 ```
 bash
 mkdir -p aredn-out
-docker run --rm -v "$PWD/aredn-out:/out" arednmesh/builder bash -lc '
+docker run --name aredn-builder arednmesh/builder bash -lc '
   git clone --branch mcar/tiny-xm \
     https://github.com/BillJr99/aredn.git ~/aredn-build &&
   cd ~/aredn-build &&
+  J="-j$(nproc)" &&   # parallelize across all CPU cores
 
   # ath79 (mips_24kc)
-  make MAINTARGET=ath79   SUBTARGET=generic                  &&
-  make MAINTARGET=ath79   SUBTARGET=mikrotik                 &&
-  make MAINTARGET=ath79   SUBTARGET=mikrotik ALTTARGET=ath10k &&
-  make MAINTARGET=ath79   SUBTARGET=mikrotik ALTTARGET=nand   &&
-  make MAINTARGET=ath79   SUBTARGET=nand                     &&
-  make MAINTARGET=ath79   SUBTARGET=tiny                     &&
+  make MAINTARGET=ath79   SUBTARGET=generic                   MAKE_ARGS="$J" &&
+  make MAINTARGET=ath79   SUBTARGET=mikrotik                  MAKE_ARGS="$J" &&
+  make MAINTARGET=ath79   SUBTARGET=mikrotik ALTTARGET=ath10k MAKE_ARGS="$J" &&
+  make MAINTARGET=ath79   SUBTARGET=mikrotik ALTTARGET=nand   MAKE_ARGS="$J" &&
+  make MAINTARGET=ath79   SUBTARGET=nand                      MAKE_ARGS="$J" &&
+  make MAINTARGET=ath79   SUBTARGET=tiny                      MAKE_ARGS="$J" &&
 
   # ipq40xx (arm_cortex-a7)
-  make MAINTARGET=ipq40xx SUBTARGET=generic                 &&
-  make MAINTARGET=ipq40xx SUBTARGET=mikrotik                &&
+  make MAINTARGET=ipq40xx SUBTARGET=generic                  MAKE_ARGS="$J" &&
+  make MAINTARGET=ipq40xx SUBTARGET=mikrotik                 MAKE_ARGS="$J" &&
 
   # ramips (mipsel_24kc), incl. MorseMicro HaLow variants
-  make MAINTARGET=ramips  SUBTARGET=mt7621                  &&
-  make MAINTARGET=ramips  SUBTARGET=mt7621 ALTTARGET=morse  &&
-  make MAINTARGET=ramips  SUBTARGET=mt76x8                  &&
-  make MAINTARGET=ramips  SUBTARGET=mt76x8 ALTTARGET=morse  &&
+  make MAINTARGET=ramips  SUBTARGET=mt7621                   MAKE_ARGS="$J" &&
+  make MAINTARGET=ramips  SUBTARGET=mt7621 ALTTARGET=morse   MAKE_ARGS="$J" &&
+  make MAINTARGET=ramips  SUBTARGET=mt76x8                   MAKE_ARGS="$J" &&
+  make MAINTARGET=ramips  SUBTARGET=mt76x8 ALTTARGET=morse   MAKE_ARGS="$J" &&
 
   # mediatek (aarch64) and x86
-  make MAINTARGET=mediatek SUBTARGET=filogic               &&
-  make MAINTARGET=x86      SUBTARGET=64                     &&
+  make MAINTARGET=mediatek SUBTARGET=filogic                MAKE_ARGS="$J" &&
+  make MAINTARGET=x86      SUBTARGET=64                      MAKE_ARGS="$J" &&
 
-  # copy every built image out to the host
-  cp -rv firmware/targets/* /out/
+  # stage every built image into a directory inside the container
+  mkdir -p ~/out && cp -rv firmware/targets/* ~/out/
 '
+# pull the whole tree out from the host side, then discard the container + build tree
+docker cp aredn-builder:/home/aredn/out/. aredn-out/
+docker rm aredn-builder
 ```
 
 Notes:
 * This builds **five CPU architectures**, so it pulls a separate toolchain for
   each — expect **tens of GB** of container scratch space (well beyond the ~10GB
-  single-target figure) and **several hours**. With `--rm` all of that scratch is
-  discarded on exit; only the images under `./aredn-out/` remain.
-* To speed it up, append `MAKE_ARGS=-j$(nproc)` to each `make` line (the repo
-  defaults to `-j3` in `config.mk`).
+  single-target figure) and **several hours**. `docker rm aredn-builder` at the
+  end discards all of that scratch; only the images under `./aredn-out/` remain.
+* **Speed:** `MAKE_ARGS="-j$(nproc)"` (already inline above) overrides the repo's
+  `-j3` default (`config.mk`) to build in parallel across every core — by far the
+  biggest win. On **Docker Desktop** (macOS / WSL2) the VM caps CPUs/RAM, which
+  throttles `-j`: raise them under *Settings → Resources*, or pin them per run
+  with `--cpus` / `--memory` (e.g. `docker run --cpus=16 --memory=24g ...`); on
+  native Linux the container already sees all host cores. With ≥32 GB RAM you can
+  build in a RAM disk by adding `--tmpfs /home/aredn:exec,size=32g` to `docker
+  run` (the mount **must** be `exec`). Note these throwaway builds keep no cache,
+  so each run re-downloads sources and rebuilds the toolchain.
 * The `&&` between lines aborts the whole run on the first failure. Use `;`
   instead if you would rather build best-effort and keep going past a target that
   fails, then copy out whatever succeeded.
