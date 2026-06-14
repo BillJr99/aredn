@@ -143,6 +143,59 @@ An internet connection is required during the build process. A good internet con
 
 You need approximately 10GB of space for the build.
 
+The build is **self-contained**: the OpenWrt tree, all downloads, the staging
+directory, and the output images are created *inside* the `aredn/` directory you
+clone. Nothing is written to your home directory or to system locations, so you
+can remove the whole `aredn/` folder to reclaim the space when you are done.
+
+#### Building under WSL (Windows Subsystem for Linux)
+
+The native build works under WSL2 (Ubuntu/Debian), but two things matter:
+
+* Clone and build on the **Linux filesystem** (e.g. `~/aredn`), **not** under
+  `/mnt/c` or any other Windows drive. The Windows mount is not fully
+  case-sensitive and does not handle the symlinks the build relies on.
+* Do **not** run `make` as `root` — OpenWrt refuses to build as root. Use a
+  normal user.
+
+```
+bash
+# in a WSL Ubuntu/Debian shell, install the prerequisites listed above, then:
+cd ~                      # stay on the Linux filesystem, not /mnt/c
+git clone https://github.com/aredn/aredn.git
+cd aredn
+vi config.mk              # enter your callsign, etc.
+make MAINTARGET=ath79 SUBTARGET=tiny   # or any other target
+```
+
+#### One-shot, no-trace build with Docker (`--rm`)
+
+If you would rather not install the prerequisites or leave a ~10GB build tree on
+your machine, build inside a throwaway container. Everything (the clone, the
+OpenWrt tree, all intermediate files) lives inside the container and is deleted
+when it exits because of `--rm`; only the finished `.bin` images are copied to a
+folder you mount from the host. This works the same from WSL, Linux, or macOS:
+
+```
+bash
+# a host folder to receive the images; nothing else is written to the host
+mkdir -p aredn-out
+docker run --rm -v "$PWD/aredn-out:/out" arednmesh/builder bash -lc '
+  git clone --branch mcar/tiny-xm \
+    https://github.com/BillJr99/aredn.git ~/aredn-build &&
+  cd ~/aredn-build &&
+  make MAINTARGET=ath79 SUBTARGET=tiny &&
+  cp -v firmware/targets/ath79/tiny/*-squashfs-*.bin /out/
+'
+```
+
+When it finishes, the images are in `./aredn-out/` and the container (with its
+entire build tree) is gone. To build a different target, change the `make` line
+and the `cp` source path (for example `SUBTARGET=generic` →
+`firmware/targets/ath79/generic/`); to build everything, add more `make` lines
+before the `cp` and copy from each target directory. On WSL this requires Docker
+Desktop with the WSL2 backend (or Docker installed inside the WSL distro).
+
 ### Experimental tiny build for legacy Ubiquiti XM devices
 
 The `ath79/tiny` target is an **experimental, best-effort** revival of the old
