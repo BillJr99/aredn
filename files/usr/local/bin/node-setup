@@ -323,6 +323,29 @@ if (isDmzMode()) {
     cfg.dhcp_start = cfg.dmz_dhcp_start;
     cfg.dhcp_end = cfg.dmz_dhcp_end;
 }
+// Fit the DHCP range (stored as offsets from the network base) to the active
+// netmask so the lease pool matches the subnet. dhcp_start/dhcp_end default to
+// a /24 (5..25); on a smaller subnet (e.g. /28) an unfitted end offset is
+// clamped by dnsmasq to the last usable host, yielding fewer leases than the
+// subnet supports. Re-fit only when the end offset does not fit, so the /24
+// default and the already-fitted DMZ ranges are left untouched.
+const dhcp_mask = iptoarr(cfg.lan_mask);
+if (dhcp_mask) {
+    const dhcp_size = (65535 - ((dhcp_mask[2] << 8) + dhcp_mask[3])) & 0xffff;
+    let dhcp_start = int(cfg.dhcp_start);
+    let dhcp_end = int(cfg.dhcp_end);
+    if (dhcp_size > 0 && dhcp_end >= dhcp_size) {
+        if (dhcp_start < 2) {
+            dhcp_start = 2; // offset 0 is the network base, offset 1 the gateway
+        }
+        dhcp_end = dhcp_size - 1; // last usable host before the broadcast address
+        if (dhcp_start > dhcp_end) {
+            dhcp_start = dhcp_end; // tiny subnets (e.g. /30)
+        }
+        cfg.dhcp_start = dhcp_start;
+        cfg.dhcp_end = dhcp_end;
+    }
+}
 cfg.dhcp_limit = cfg.dhcp_end - cfg.dhcp_start + 1;
 
 // verify that we have all the variables we need

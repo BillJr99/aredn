@@ -109,6 +109,31 @@ if (request.env.REQUEST_METHOD === "PUT") {
     if ("lan44_dhcp_end" in request.args) {
         configuration.setSetting("dhcp_end", request.args.lan44_dhcp_end);
     }
+    // When the LAN netmask changes, fit the DHCP range (stored as offsets from
+    // the network base) to the subnet so a smaller network (e.g. /28) uses its
+    // full lease pool instead of leaving the /24-oriented default in place. Run
+    // after the start/end setSetting calls so the netmask-driven fit wins. Only
+    // re-fit when the end offset overflows the subnet, leaving the /24 default
+    // untouched. node-setup applies the same fit authoritatively at apply time.
+    if ("lan_dhcp_netmask" in request.args || "lan44_dhcp_netmask" in request.args) {
+        const dhcp_mask = iptoarr(configuration.getSettingAsString("lan_mask"));
+        if (dhcp_mask) {
+            const dhcp_size = (65535 - ((dhcp_mask[2] << 8) + dhcp_mask[3])) & 0xffff;
+            let dhcp_start = configuration.getSettingAsInt("dhcp_start", 5);
+            let dhcp_end = configuration.getSettingAsInt("dhcp_end", 25);
+            if (dhcp_size > 0 && dhcp_end >= dhcp_size) {
+                if (dhcp_start < 2) {
+                    dhcp_start = 2;
+                }
+                dhcp_end = dhcp_size - 1;
+                if (dhcp_start > dhcp_end) {
+                    dhcp_start = dhcp_end;
+                }
+                configuration.setSetting("dhcp_start", dhcp_start);
+                configuration.setSetting("dhcp_end", dhcp_end);
+            }
+        }
+    }
     if ("wan_mode" in request.args) {
         if (request.args.wan_mode === "0") {
             configuration.setSetting("wan_proto", "disabled");
