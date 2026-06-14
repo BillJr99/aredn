@@ -10,7 +10,8 @@
 * *sunset* - this device is supported but no longer recommended for new purchases or installs.
 * *not supported* - this image is not supported and not available for download.
 * *frozen* - this device has been previously sunsetted, and is now frozen. Old images are still available but there will be no future updates.
-* *experimental* - revived for the current Babel-only firmware as a best-effort, reduced-package build for legacy low-memory (8MB flash / 32MB RAM) hardware. Autobuilt in nightlies but untested and not recommended for production. See the "Experimental tiny build" section of the README.
+* *experimental* - a previously sunsetted or frozen legacy device, revived for the current Babel-only firmware as a best-effort build. AREDN dropped both OLSR (so the dual OLSR+Babel routing stack that pushed low-memory boards out is gone). These images are autobuilt in the nightlies but are untested and not recommended for production. The legacy 8MB-flash / 32MB-RAM Ubiquiti "XM" boards additionally use a reduced-package `ath79/tiny` image. See the "Experimental / revived legacy devices" section of the README.
+* *no profile* - a previously frozen device for which OpenWrt no longer ships a device profile. No image can be produced, so these cannot be revived; they are listed for reference only.
 
 The 'target' and 'subtarget' identify the directory in which to find the image on at http://downloads.arednmesh.org
 
@@ -42,8 +43,8 @@ RB922UAGS-5HPacD <br> NetMetal 5 | 922UAGS-5HPacD-NM <br> 922UAGS-5HPacD-NM-US |
 mANTBox 15s | RB921GS-5HPacD-15S | 5 | ath79 | mikrotik | mikrotik-921gs-5hpacd-15s | 128MB | stable | released
 mANTBox 19s | RB921GS-5HPacD-19S | 5 | ath79 | mikrotik | mikrotik-921gs-5hpacd-19s | 128MB | stable | released
 mANTBox 2 12s | RB911G-2HPnD-12S | 2 | ath79 | mikrotik | mikrotik-911g-2hpnd-12s | 64MB | stable | released
-**Sunset Devices** | | | | | | | |
-hAP ac lite <br> hAP ac lite TC | RB952Ui-5ac2nD <br> RB952Ui-5ac2nD-TC | 2 & 5 | ath79 | mikrotik | mikrotik-952ui-5ac2nd | 64MB | stable | sunset
+**Revived (formerly Sunset) Devices** | | | | | | | |
+hAP ac lite <br> hAP ac lite TC | RB952Ui-5ac2nD <br> RB952Ui-5ac2nD-TC | 2 & 5 | ath79 | mikrotik | mikrotik-952ui-5ac2nd | 64MB | stable | experimental
 
 ## Ubiquiti
 Model | SKUs | Band | Target | Subtarget | Image | RAM | Stability | Status
@@ -87,11 +88,12 @@ Rocket M2 XM with USB port || 2 | ath79 | generic | ubnt_rocket-m | 64MB | untes
 Rocket M5 XM with USB port || 5 | ath79 | generic | ubnt_rocket-m | 64MB | untested | released
 Rocket M2 XW || 2 | ath79 | generic | ubnt_rocket-m2-xw | 64MB | stable | released
 Rocket M5 XW || 5 | ath79 | generic | ubnt_rocket-m-xw | 64MB | stable | released
-**Sunset Devices** | | | | | | | |
-Rocket M2 Titanium TI || 2 | ath79 | - | - | 64MB | untested | sunset
-Rocket M2 Titanium XW || 2 | ath79 | generic | ubnt_rocket-m2-xw | 64MB | untested | sunset
-Rocket M5 Titanium TI || 5 | ath79 | - | - | 64MB | untested | sunset
-Rocket M5 Titanium XW || 5 | ath79 | generic | ubnt_rocket-m-xw | 64MB | stable | sunset
+**Revived (formerly Sunset) Devices** | | | | | | | |
+Rocket M2 Titanium XW || 2 | ath79 | generic | ubnt_rocket-m2-xw | 64MB | untested | experimental
+Rocket M5 Titanium XW || 5 | ath79 | generic | ubnt_rocket-m-xw | 64MB | stable | experimental
+**Frozen - no OpenWrt profile (cannot be built)** (10) | | | | | | | |
+Rocket M2 Titanium TI || 2 | ath79 | - | - | 64MB | untested | no profile
+Rocket M5 Titanium TI || 5 | ath79 | - | - | 64MB | untested | no profile
 **Experimental Devices** (legacy Ubiquiti XM, 8MB/32MB, revived as a Babel-only tiny build - see README) | | | | | | | |
 AirGrid M2 XM || 2 | ath79 | tiny | ubnt_bullet-m-ar7241 | 32MB | untested | experimental
 AirGrid M5 XM || 5 | ath79 | tiny | ubnt_bullet-m-ar7241 | 32MB | untested | experimental
@@ -111,11 +113,12 @@ NanoStation M2 XM || 2 | ath79 | tiny | ubnt_nanostation-m | 32MB | untested | e
 NanoStation M3 XM || 3 | ath79 | tiny | ubnt_nanostation-m | 32MB | untested | experimental
 NanoStation M5 XM || 5 | ath79 | tiny | ubnt_nanostation-m | 32MB | untested | experimental
 PicoStation M2 || 2 | ath79 | tiny | ubnt_picostation-m | 32MB | untested | experimental
-**Frozen Devices** | | | | | | | |
-AirGrid M5 XW || 5 | ath79 | generic | ubnt_bullet-m-xw | 32MB | untested | frozen
-Bullet M2Ti || 2 | ath79 | - | - | 32MB | untested | frozen
-Bullet M5Ti || 5 | ath79 | - | - | 32MB | untested | frozen
-NanoBeam M2-13 || 2 | ath79 | - | - | 32MB | untested | frozen
+**Revived (formerly Frozen) Devices** | | | | | | | |
+AirGrid M5 XW (11) || 5 | ath79 | generic | ubnt_bullet-m-xw | 32MB | untested | experimental
+**Frozen - no OpenWrt profile (cannot be built)** (10) | | | | | | | |
+Bullet M2Ti || 2 | ath79 | - | - | 32MB | untested | no profile
+Bullet M5Ti || 5 | ath79 | - | - | 32MB | untested | no profile
+NanoBeam M2-13 || 2 | ath79 | - | - | 32MB | untested | no profile
 
 ## TP-Link
 Model | SKUs | Band | Target | Subtarget | Image | RAM | Stability | Status
@@ -147,11 +150,11 @@ Mudi | GL-E750 | 2 & 5 | ath79 | nand | gl-e750 | 128MB | stable | stable
 Slate Plus | GL-A1300 | 2 & 5 | ipq40xx | generic | gl-a1300 | 256MB | stable | nightly (6)
 Convexa-B | GL-B1300 | 2 & 5 | ipq40xx | generic | gl-b1300 | 256MB | stable | released (6)
 Beryl | GL-MT1300 | 2 & 5 | ramips | mt7621 | gl-mt1300 | 256MB | stable | released (4)
-**Sunset Devices** | | | | | | | |
-White | GL-AR150 | 2 | ath79 | generic | glinet_gl-ar150 | 64MB | stable | sunset (3)
-Microuter | GL-USB150 | 2 | ath79 | generic | glinet_gl-usb150 | 64MB | stable | sunset (3)
-Creta | GL-AR750 | 2 & 5 | ath79 | generic | glinet_gl-ar750 | 128MB | stable | sunset (3)
-Slate | GL-AR750S-Ext | 2 & 5 | ath79 | nand | gl-ar750s | 128MB | untested | sunset (3)
+**Revived (formerly Sunset) Devices** | | | | | | | |
+White | GL-AR150 | 2 | ath79 | generic | glinet_gl-ar150 | 64MB | stable | experimental (3)
+Microuter | GL-USB150 | 2 | ath79 | generic | glinet_gl-usb150 | 64MB | stable | experimental (3)
+Creta | GL-AR750 | 2 & 5 | ath79 | generic | glinet_gl-ar750 | 128MB | stable | experimental (3)
+Slate | GL-AR750S-Ext | 2 & 5 | ath79 | nand | gl-ar750s | 128MB | untested | experimental (3)
 
 ## OpenWRT
 Model | SKUs | Band | Target | Subtarget | Image | RAM | Stability | Status
@@ -210,5 +213,7 @@ Vultr | x86 | 64 | x86-64-generic-ext4 | 64mb+ | stable | nightly (5)
  7. Mikrotik devices come with either a v6 bootloader or a v7 bootloader. See [here](https://openwrt.org/toh/mikrotik/common) for more details. If you are using a v7 bootloader use the v7 sysupgrade instead of the plain one.
  8. There is currently no way to recover if a firmware update fails and it could brick your device.
  9. Devices with AX radios do not support negative channels or channels with less then 20MHz bandwidth.
+ 10. OpenWrt no longer ships a device profile for these boards, so no firmware image can be built. They remain listed for reference only and cannot be revived.
+ 11. AirGrid M5 XW builds from the generic `ubnt_bullet-m-xw` image, which is **not** package-slimmed (it shares the full 64MB generic package set rather than the reduced `ath79/tiny` set used by the 8MB/32MB XM boards). It is therefore the tightest of the revived boards on its 8MB flash / 32MB RAM and is the most likely to run short on space or memory.
 
 Latest installation instructions are found at: https://docs.arednmesh.org/en/latest/

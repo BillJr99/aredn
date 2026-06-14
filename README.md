@@ -259,7 +259,12 @@ single-target recipe above.
 Each `make` invocation reconfigures and builds one target into the shared
 `openwrt/bin/targets/<arch>/<subtarget>/` tree, so building everything is just a
 matter of chaining all of them in the same container (this is what the nightly CI
-does) and copying the whole `targets/` tree out at the end:
+does) and copying the whole `targets/` tree out at the end. This single recipe
+produces images for **every** supported board, including the original
+experimental XM `ath79/tiny` boards **and** all the revived sunset/frozen boards
+listed in the "Experimental / revived legacy devices" section — they ride along
+in the `ath79` generic/mikrotik/nand/tiny lines below, so no extra `make` lines
+are needed:
 
 ```
 bash
@@ -323,7 +328,44 @@ Notes:
   instead if you would rather build best-effort and keep going past a target that
   fails, then copy out whatever succeeded.
 
-### Experimental tiny build for legacy Ubiquiti XM devices
+### Experimental / revived legacy devices
+
+A number of older boards that had been **sunset** or **frozen** are revived on
+this branch as **experimental, best-effort** Babel-only builds. They fall into
+two groups:
+
+* **Legacy Ubiquiti "XM" boards (8MB flash / 32MB RAM)** — revived via a
+  reduced-package `ath79/tiny` image (documented in detail just below).
+* **Other formerly sunset/frozen boards** — these already build with the normal
+  AREDN package set in their existing subtargets; "reviving" them only changes
+  their status from sunset/frozen to experimental. No special config is needed:
+
+  | Device | OpenWrt profile | MAINTARGET | SUBTARGET |
+  | :----- | :-------------- | :--------- | :-------- |
+  | Mikrotik hAP ac lite / TC | `mikrotik_routerboard-952ui-5ac2nd` | ath79 | mikrotik |
+  | GL.iNet White (GL-AR150) | `glinet_gl-ar150` | ath79 | generic |
+  | GL.iNet Microuter (GL-USB150) | `glinet_gl-usb150` | ath79 | generic |
+  | GL.iNet Creta (GL-AR750) | `glinet_gl-ar750` | ath79 | generic |
+  | GL.iNet Slate (GL-AR750S-Ext) | `gl-ar750s-nor` / `gl-ar750s-nor-nand` | ath79 | nand |
+  | Ubiquiti Rocket M2 Titanium XW | `ubnt_rocket-m2-xw` | ath79 | generic |
+  | Ubiquiti Rocket M5 Titanium XW | `ubnt_rocket-m-xw` | ath79 | generic |
+  | Ubiquiti AirGrid M5 XW | `ubnt_bullet-m-xw` | ath79 | generic |
+
+  All of the boards above are already enabled in `configs/ath79-*.config`, so the
+  normal `make MAINTARGET=ath79 SUBTARGET={generic,mikrotik,nand}` builds (and the
+  "build all" recipe above) already produce their images. The 64MB+ boards build
+  the full image normally; **AirGrid M5 XW** is the exception — it has only
+  8MB flash / 32MB RAM but builds from the *full* generic image (it cannot use the
+  slimmed `tiny` package set, which only covers the XM subtarget), so it is the
+  tightest of the revived boards and the most likely to run short on flash/RAM.
+
+  **Boards that cannot be revived:** OpenWrt no longer ships a device profile for
+  the Ubiquiti **Bullet M2Ti**, **Bullet M5Ti**, **NanoBeam M2-13**, **Rocket M2
+  Titanium TI** or **Rocket M5 Titanium TI**, so no image can be produced for them
+  no matter what config is used. They remain listed in `SUPPORTED_DEVICES.md` for
+  reference only.
+
+#### Experimental tiny build for legacy Ubiquiti XM devices
 
 The `ath79/tiny` target is an **experimental, best-effort** revival of the old
 8MB-flash / 32MB-RAM Ubiquiti "XM" radios (NanoStation M2/M3/M5 XM, NanoStation
