@@ -192,9 +192,61 @@ docker run --rm -v "$PWD/aredn-out:/out" arednmesh/builder bash -lc '
 When it finishes, the images are in `./aredn-out/` and the container (with its
 entire build tree) is gone. To build a different target, change the `make` line
 and the `cp` source path (for example `SUBTARGET=generic` →
-`firmware/targets/ath79/generic/`); to build everything, add more `make` lines
-before the `cp` and copy from each target directory. On WSL this requires Docker
-Desktop with the WSL2 backend (or Docker installed inside the WSL distro).
+`firmware/targets/ath79/generic/`). On WSL this requires Docker Desktop with the
+WSL2 backend (or Docker installed inside the WSL distro).
+
+#### Building all targets at once
+
+Each `make` invocation reconfigures and builds one target into the shared
+`openwrt/bin/targets/<arch>/<subtarget>/` tree, so building everything is just a
+matter of chaining all of them in the same container (this is what the nightly CI
+does) and copying the whole `targets/` tree out at the end:
+
+```
+bash
+mkdir -p aredn-out
+docker run --rm -v "$PWD/aredn-out:/out" arednmesh/builder bash -lc '
+  git clone --branch mcar/tiny-xm \
+    https://github.com/BillJr99/aredn.git ~/aredn-build &&
+  cd ~/aredn-build &&
+
+  # ath79 (mips_24kc)
+  make MAINTARGET=ath79   SUBTARGET=generic                  &&
+  make MAINTARGET=ath79   SUBTARGET=mikrotik                 &&
+  make MAINTARGET=ath79   SUBTARGET=mikrotik ALTTARGET=ath10k &&
+  make MAINTARGET=ath79   SUBTARGET=mikrotik ALTTARGET=nand   &&
+  make MAINTARGET=ath79   SUBTARGET=nand                     &&
+  make MAINTARGET=ath79   SUBTARGET=tiny                     &&
+
+  # ipq40xx (arm_cortex-a7)
+  make MAINTARGET=ipq40xx SUBTARGET=generic                 &&
+  make MAINTARGET=ipq40xx SUBTARGET=mikrotik                &&
+
+  # ramips (mipsel_24kc), incl. MorseMicro HaLow variants
+  make MAINTARGET=ramips  SUBTARGET=mt7621                  &&
+  make MAINTARGET=ramips  SUBTARGET=mt7621 ALTTARGET=morse  &&
+  make MAINTARGET=ramips  SUBTARGET=mt76x8                  &&
+  make MAINTARGET=ramips  SUBTARGET=mt76x8 ALTTARGET=morse  &&
+
+  # mediatek (aarch64) and x86
+  make MAINTARGET=mediatek SUBTARGET=filogic               &&
+  make MAINTARGET=x86      SUBTARGET=64                     &&
+
+  # copy every built image out to the host
+  cp -rv firmware/targets/* /out/
+'
+```
+
+Notes:
+* This builds **five CPU architectures**, so it pulls a separate toolchain for
+  each — expect **tens of GB** of container scratch space (well beyond the ~10GB
+  single-target figure) and **several hours**. With `--rm` all of that scratch is
+  discarded on exit; only the images under `./aredn-out/` remain.
+* To speed it up, append `MAKE_ARGS=-j$(nproc)` to each `make` line (the repo
+  defaults to `-j3` in `config.mk`).
+* The `&&` between lines aborts the whole run on the first failure. Use `;`
+  instead if you would rather build best-effort and keep going past a target that
+  fails, then copy out whatever succeeded.
 
 ### Experimental tiny build for legacy Ubiquiti XM devices
 
