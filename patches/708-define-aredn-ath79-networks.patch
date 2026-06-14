@@ -327,3 +327,54 @@
  		;;
  	hiwifi,hc6361|\
  	xiaomi,mi-router-4q|\
+--- a/target/linux/ath79/tiny/base-files/etc/board.d/02_network
++++ b/target/linux/ath79/tiny/base-files/etc/board.d/02_network
+@@ -39,11 +39,6 @@ ath79_setup_interfaces()
+ 	tplink,tl-wr703n|\
+ 	tplink,tl-wr802n-v1|\
+-	tplink,tl-wr802n-v2|\
+-	ubnt,bullet-m-ar7240|\
+-	ubnt,bullet-m-ar7241|\
+-	ubnt,nanobridge-m|\
+-	ubnt,picostation-m|\
+-	ubnt,nanostation-loco-m)
++	tplink,tl-wr802n-v2)
+ 		ucidef_set_interface_lan "eth0"
+ 		;;
+ 	dlink,dir-615-e4|\
+--- a/target/linux/ath79/tiny/base-files/etc/board.d/02_network
++++ b/target/linux/ath79/tiny/base-files/etc/board.d/02_network
+@@ -125,5 +125,6 @@ ath79_setup_interfaces()
+ 	ubnt,airrouter)
+ 		ucidef_set_interface_wan "eth1"
+ 		ucidef_add_switch "switch0" \
+-			"0@eth0" "1:lan:4" "2:lan:3" "3:lan:2" "4:lan:1"
++			"0@eth0" "1t:dummy" "1t:dtdlink" "4:lan" "3:lan" "2:lan"
++		ucidef_set_interface "wifi" device "wlan0" protocol "static"
+ 		;;
+--- a/target/linux/ath79/tiny/base-files/etc/board.d/02_network
++++ b/target/linux/ath79/tiny/base-files/etc/board.d/02_network
+@@ -130,7 +130,21 @@ ath79_setup_interfaces()
++	ubnt,bullet-m-ar7240|\
++	ubnt,bullet-m-ar7241|\
++	ubnt,nanobridge-m|\
++	ubnt,picostation-m|\
++	ubnt,nanostation-loco-m)
++		ucidef_set_interfaces_lan_wan "eth0" "eth0.1"
++		ucidef_set_interface "dtdlink" device "eth0.2" protocol "static"
++		ucidef_set_interface "wifi" device "wlan0" protocol "static"
++		;;
+ 	ubnt,nanostation-m)
+-		ucidef_set_interfaces_lan_wan "eth1" "eth0"
++		ucidef_set_interface_lan "eth0 eth1"
++		ucidef_set_interface_wan "eth0.1 eth1.1"
++		ucidef_set_interface "dtdlink" device "eth0.2 eth1.2" protocol "static"
++		ucidef_set_interface "wifi" device "wlan0" protocol "static"
+ 		;;
+ 	*)
+-		ucidef_set_interfaces_lan_wan "eth0" "eth1"
++		ucidef_set_interfaces_lan_wan "eth0" "eth0.1"
++		ucidef_set_interface "dtdlink" device "eth0.2" protocol "static"
++		ucidef_set_interface "wifi" device "wlan0" protocol "static"
+ 		;;
+ 	esac

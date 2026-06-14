@@ -143,6 +143,48 @@ An internet connection is required during the build process. A good internet con
 
 You need approximately 10GB of space for the build.
 
+### Experimental tiny build for legacy Ubiquiti XM devices
+
+The `ath79/tiny` target is an **experimental, best-effort** revival of the old
+8MB-flash / 32MB-RAM Ubiquiti "XM" radios (NanoStation M2/M3/M5 XM, NanoStation
+Loco M2/M5/M9, Bullet M, NanoBridge M, PicoStation M, AirRouter). These boards
+were *frozen* when AREDN moved to the 4.x series. They were not dropped because
+of Babel itself: the transitional releases had to carry **both** OLSR and Babel
+at once, and that dual stack would not fit on a 32MB-RAM node. 4.x is now
+**Babel-only**, so a slimmed-down image fits again.
+
+**What is included:** Babel mesh routing, the ath9k WiFi stack (including Part-15
+capability via the standard AREDN regulatory/extended-spectrum support),
+WireGuard tunnels, and the normal AREDN web UI.
+
+**What is removed to fit 8MB flash / 32MB RAM** (see `configs/ath79-tiny.config`):
+SNMP, the Prometheus exporter, iperf3, socat, curl/libcurl, ethtool, the ath9k
+debug/spectral options, advanced traffic-control (`tc-full`/CAKE) and UBI tools.
+`zram-swap` is enabled in the image to add compressed swap on these low-memory
+boards.
+
+**Limitations / operating guidance:**
+* Experimental and **untested** on the current firmware — not for production use.
+* 32MB RAM is tight. Keep tunnels to **1 or 2** and **do not install add-on
+  packages** on these nodes.
+* No SNMP/Prometheus/iperf3/curl or USB-storage support.
+
+**Build it:**
+
+```
+bash
+# build the experimental tiny images for the legacy Ubiquiti XM boards
+make MAINTARGET=ath79 SUBTARGET=tiny
+```
+
+This target is also built automatically in the nightly/release CI alongside the
+other ath79 images. Because it shares the OpenWrt `ath79/tiny` subtarget, the
+output images land in `firmware/targets/ath79/tiny/` (a symlink into
+`openwrt/bin/targets/ath79/tiny/`). Pick the image matching your board, for
+example `*ubnt_nanostation-m*-squashfs-factory.bin` for a first-time flash from
+the stock Ubiquiti firmware, or `*-squashfs-sysupgrade.bin` to upgrade a node
+that is already running OpenWrt/AREDN.
+
 ### How to build prior builds of AREDN®
 
 Prior AREDN® images can be rebuilt.  Replace one of the following after

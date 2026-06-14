@@ -10,6 +10,7 @@
 * *sunset* - this device is supported but no longer recommended for new purchases or installs.
 * *not supported* - this image is not supported and not available for download.
 * *frozen* - this device has been previously sunsetted, and is now frozen. Old images are still available but there will be no future updates.
+* *experimental* - revived for the current Babel-only firmware as a best-effort, reduced-package build for legacy low-memory (8MB flash / 32MB RAM) hardware. Autobuilt in nightlies but untested and not recommended for production. See the "Experimental tiny build" section of the README.
 
 The 'target' and 'subtarget' identify the directory in which to find the image on at http://downloads.arednmesh.org
 
@@ -91,28 +92,30 @@ Rocket M2 Titanium TI || 2 | ath79 | - | - | 64MB | untested | sunset
 Rocket M2 Titanium XW || 2 | ath79 | generic | ubnt_rocket-m2-xw | 64MB | untested | sunset
 Rocket M5 Titanium TI || 5 | ath79 | - | - | 64MB | untested | sunset
 Rocket M5 Titanium XW || 5 | ath79 | generic | ubnt_rocket-m-xw | 64MB | stable | sunset
+**Experimental Devices** (legacy Ubiquiti XM, 8MB/32MB, revived as a Babel-only tiny build - see README) | | | | | | | |
+AirGrid M2 XM || 2 | ath79 | tiny | ubnt_bullet-m-ar7241 | 32MB | untested | experimental
+AirGrid M5 XM || 5 | ath79 | tiny | ubnt_bullet-m-ar7241 | 32MB | untested | experimental
+AirRouter || 2 | ath79 | tiny | ubnt_airrouter | 32MB | untested | experimental
+AirRouter HP || 2 | ath79 | tiny | ubnt_airrouter | 32MB | untested | experimental
+Bullet M2 (AR7240) || 2 | ath79 | tiny | ubnt_bullet-m-ar7240 | 32MB | untested | experimental
+Bullet M2 (AR7241) || 2 | ath79 | tiny | ubnt_bullet-m-ar7241 | 32MB | untested | experimental
+Bullet M5 || 5 | ath79 | tiny | ubnt_bullet-m-ar7241 | 32MB | untested | experimental
+NanoBridge 2G18 || 2 | ath79 | tiny | ubnt_nanobridge-m | 32MB | untested | experimental
+NanoBridge 5G22 || 5 | ath79 | tiny | ubnt_nanobridge-m | 32MB | untested | experimental
+NanoBridge 5G25 || 5 | ath79 | tiny | ubnt_nanobridge-m | 32MB | untested | experimental
+NanoBridge M9 || 900 | ath79 | tiny | ubnt_nanostation-loco-m | 32MB | untested | experimental
+NanoStation Loco M2 XM || 2 | ath79 | tiny | ubnt_nanostation-loco-m | 32MB | untested | experimental
+NanoStation Loco M5 XM || 5 | ath79 | tiny | ubnt_nanostation-loco-m | 32MB | untested | experimental
+NanoStation Loco M9 XM || 900 | ath79 | tiny | ubnt_nanostation-loco-m | 32MB | untested | experimental
+NanoStation M2 XM || 2 | ath79 | tiny | ubnt_nanostation-m | 32MB | untested | experimental
+NanoStation M3 XM || 3 | ath79 | tiny | ubnt_nanostation-m | 32MB | untested | experimental
+NanoStation M5 XM || 5 | ath79 | tiny | ubnt_nanostation-m | 32MB | untested | experimental
+PicoStation M2 || 2 | ath79 | tiny | ubnt_picostation-m | 32MB | untested | experimental
 **Frozen Devices** | | | | | | | |
-AirGrid M2 XM || 2 | ath79 | tiny (2) | ubnt_bullet-m-ar7241 | 32MB | untested | frozen
-AirGrid M5 XM || 5 | ath79 | tiny (2) | ubnt_bullet-m-ar7241 | 32MB | untested | frozen
 AirGrid M5 XW || 5 | ath79 | generic | ubnt_bullet-m-xw | 32MB | untested | frozen
-AirRouter || 2 | ath79 | tiny (2) | ubnt_airrouter | 32MB | stable | frozen
-AirRouter HP || 2 | ath79 | tiny (2) | ubnt_airrouter | 32MB | stable | frozen
 Bullet M2Ti || 2 | ath79 | - | - | 32MB | untested | frozen
-Bullet M5 || 5 | ath79 | tiny (2) | ubnt_bullet-m-ar7241 | 32MB | stable | frozen
 Bullet M5Ti || 5 | ath79 | - | - | 32MB | untested | frozen
-Bullet M2 || 2 | ath79 | tiny (2) | ubnt_bullet-m-ar7241 | 32MB | stable | frozen
 NanoBeam M2-13 || 2 | ath79 | - | - | 32MB | untested | frozen
-NanoBridge 2G18 || 2 | ath79 | tiny (2) | ubnt_nanobridge-m | 32MB | untested | frozen
-NanoBridge 5G22 || 5 | ath79 | tiny (2) | ubnt_nanobridge-m | 32MB | stable | frozen
-NanoBridge 5G25 || 5 | ath79 | tiny (2) | ubnt_nanobridge-m | 32MB | stable | frozen
-NanoBridge M9 || 900 | ath79 | tiny (2) | ubnt_nanostation-loco-m | 32MB | stable | frozen
-NanoStation Loco M2 XM || 2 | ath79 | tiny (2) | ubnt_nanostation-loco-m | 32MB | stable | frozen
-NanoStation Loco M5 XM || 5 | ath79 | tiny (2) | ubnt_nanostation-loco-m | 32MB | untested | frozen
-NanoStation Loco M9 XM || 900 | ath79 | tiny (2) | ubnt_nanostation-loco-m | 32MB | stable | frozen
-NanoStation M2 XM || 2 | ath79 | tiny (2) | ubnt_nanostation-m | 32MB | stable | frozen
-NanoStation M3 XM || 3 | ath79 | tiny (2) | ubnt_nanostation-m | 32MB | stable | frozen
-NanoStation M5 XM || 5 | ath79 | tiny (2) | ubnt_nanostation-m | 32MB | stable | frozen
-PicoStation M2 || 2 | ath79 | tiny (2) | ubnt_picostation-m | 32MB | untested | frozen
 
 ## TP-Link
 Model | SKUs | Band | Target | Subtarget | Image | RAM | Stability | Status

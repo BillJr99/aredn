@@ -74,6 +74,10 @@ commands:
           name: Build ath79/nand
           command: make MAINTARGET=ath79 SUBTARGET=nand
           no_output_timeout: 2h
+      - run:
+          name: Build ath79/tiny (experimental - Ubiquiti XM)
+          command: make MAINTARGET=ath79 SUBTARGET=tiny
+          no_output_timeout: 2h
 
   build_ipq40xx:
     description: "Build ipq40xx/generic and ipq40xx/mikrotik"
@@ -311,6 +315,10 @@ jobs:
       - run:
           name: Build ath79/nand
           command: make MAINTARGET=ath79 SUBTARGET=nand
+          no_output_timeout: 2h
+      - run:
+          name: Build ath79/tiny (experimental - Ubiquiti XM)
+          command: make MAINTARGET=ath79 SUBTARGET=tiny
           no_output_timeout: 2h
       - run:
           name: Build ipq40xx/generic
