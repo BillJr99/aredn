@@ -168,112 +168,43 @@ vi config.mk              # enter your callsign, etc.
 make MAINTARGET=ath79 SUBTARGET=tiny   # or any other target
 ```
 
-#### One-shot, no-trace build with Docker
+#### One-shot, no-trace Docker build for all targets (layered on `main`)
 
-If you would rather not install the prerequisites or leave a ~10GB build tree on
-your machine, build inside a throwaway container. Everything (the clone, the
-OpenWrt tree, all intermediate files) lives inside the container; only the
-finished `.bin` images are pulled out, and the container is deleted at the end,
-so nothing is left behind. This works the same from WSL, Linux, or macOS.
+This recipe builds **every supported target** inside a throwaway container,
+layering this branch on top of upstream `main` (this is what the nightly CI builds,
+plus the extras this branch adds). Everything — the clone, the OpenWrt tree, all
+intermediate files — lives inside the container; only the finished `.bin` images
+are copied out, and the container is deleted at the end, so nothing is left behind.
+It works the same from WSL, Linux, or macOS. The output includes the original
+experimental XM `ath79/tiny` boards **and** all the revived sunset/frozen boards
+listed in the "Experimental / revived legacy devices" section — they ride along in
+the `ath79` generic/mikrotik/nand/tiny lines below, so no extra `make` lines are
+needed.
 
 The build runs as the image's unprivileged `aredn` user (OpenWrt refuses to build
 as `root`), which cannot write into a host bind-mount. So instead of mounting a
-folder, build in a **named** container, stage the images to a directory *inside*
-it, then copy them to the host with `docker cp` (which runs with host
-privileges). Keeping build and extraction separate also means a copy error can't
-throw away a long build:
-
-```
-bash
-mkdir -p aredn-out
-# build in a named container (no --rm yet, so the images survive if a later step fails)
-docker run --name aredn-builder arednmesh/builder bash -lc '
-  git clone --branch mcar/tiny-xm \
-    https://github.com/BillJr99/aredn.git ~/aredn-build &&
-  cd ~/aredn-build &&
-  make MAINTARGET=ath79 SUBTARGET=tiny MAKE_ARGS="-j$(nproc)" &&
-  mkdir -p ~/out && cp -v firmware/targets/ath79/tiny/*-squashfs-*.bin ~/out/
-'
-# pull the finished images out from the host side
-docker cp aredn-builder:/home/aredn/out/. aredn-out/
-ls -la aredn-out/          # confirm the .bin files are really here ...
-docker rm aredn-builder    # ... and only then discard the container + build tree
-```
-
-When it finishes, the images are in `./aredn-out/` and the container (with its
-entire build tree) is gone. `MAKE_ARGS="-j$(nproc)"` builds in parallel across all
-CPU cores — the single biggest speedup (see the **Notes** under the all-targets
-recipe below). To build a different target, change the `make` line and the
-`cp` source path (for example `SUBTARGET=generic` →
-`firmware/targets/ath79/generic/`).
-
-> **On WSL, point the output dir at the Linux filesystem, not `/mnt/c`.** The
-> build itself runs inside the container, but `docker cp` (via Docker Desktop)
-> cannot reliably write into a Windows drive mounted at `/mnt/c/...` and fails
-> with `permission denied`. Run from a Linux-filesystem path (e.g. `cd ~` and use
-> `aredn-out` there), and **verify the `ls -la aredn-out/` output before running
-> `docker rm`** — otherwise a failed copy plus an eager `docker rm` throws away
-> the whole build. To get the images into Windows afterward, copy them across once
-> they are safely extracted (`cp ~/aredn-out/*.bin /mnt/c/Users/<you>/...`) or open
-> `\\wsl$\<distro>\home\<you>\aredn-out` in File Explorer. This needs Docker
-> Desktop with the WSL2 backend (or Docker installed inside the WSL distro).
-
-#### Iterating on a build (fast rebuilds & recovering a failed run)
-
-The recipe above removes the container at the end, which means every fresh
-`docker run` rebuilds the cross-toolchain from scratch — slow. If you expect to
-build more than once (tweaking a `configs/*.config`, or a build failed partway),
-**keep the container** by simply *not* running the final `docker rm`. All the
-expensive state — the toolchain, the `dl/` download cache, and every compiled
-package — lives in `~/aredn-build` inside it, so the next build only recompiles
-what changed.
-
-A `docker run` container stops when its command finishes (it is **not** deleted
-without `--rm`). Reuse the *same* container with `docker start` + `docker exec` —
-do **not** `docker run` again, and do **not** re-clone:
-
-```
-bash
-# rebuild in the existing tree (reuses toolchain + downloads + compiled objects)
-docker start aredn-builder
-docker exec aredn-builder bash -lc '
-  cd ~/aredn-build &&
-  git pull &&
-  make MAINTARGET=ath79 SUBTARGET=tiny MAKE_ARGS="-j$(nproc)"
-'
-# re-extract whatever you need, e.g.
-docker cp aredn-builder:/home/aredn/aredn-build/firmware/targets/ath79/tiny/. aredn-out/
-
-# when you are completely finished, reclaim the (tens of GB of) space:
-docker rm -f aredn-builder
-```
-
-Caveat: incremental rebuilds only recover *configuration* changes cleanly. A build
-interrupted mid-compile (Ctrl-C, out-of-memory, power loss) can leave the OpenWrt
-tree half-built in a way `make` will not untangle; if a reused build starts
-erroring oddly, scrap it (`docker rm -f aredn-builder`) and start fresh from the
-single-target recipe above.
-
-#### Building all targets at once
-
-Each `make` invocation reconfigures and builds one target into the shared
-`openwrt/bin/targets/<arch>/<subtarget>/` tree, so building everything is just a
-matter of chaining all of them in the same container (this is what the nightly CI
-does) and copying the whole `targets/` tree out at the end. This single recipe
-produces images for **every** supported board, including the original
-experimental XM `ath79/tiny` boards **and** all the revived sunset/frozen boards
-listed in the "Experimental / revived legacy devices" section — they ride along
-in the `ath79` generic/mikrotik/nand/tiny lines below, so no extra `make` lines
-are needed:
+folder, build in a **named** container, stage the images to a directory *inside* it,
+then copy them to the host with `docker cp` (which runs with host privileges):
 
 ```
 bash
 mkdir -p aredn-out
 docker run --name aredn-builder arednmesh/builder bash -lc '
-  git clone --branch mcar/tiny-xm \
-    https://github.com/BillJr99/aredn.git ~/aredn-build &&
+  git clone --branch main https://github.com/BillJr99/aredn.git ~/aredn-build &&
   cd ~/aredn-build &&
+  # A throwaway git identity is needed because layering a branch makes a merge commit.
+  git config user.email aredn-build@example.invalid && git config user.name "AREDN build" &&
+  # Layer this fork branch onto main. Repeat this line to bring in additional
+  # branches, e.g. also run:  git pull --no-rebase --no-edit -X ours origin mcar/dhcp
+  # The fork branches touch disjoint firmware files, so the code always merges
+  # cleanly; `-X ours` only matters for this README (each branch customizes it) and
+  # simply keeps the first branch's copy — irrelevant to what gets built.
+  git pull --no-rebase --no-edit -X ours origin mcar/tiny-xm &&
   J="-j$(nproc)" &&   # parallelize across all CPU cores
+
+  # Builds EVERY target below. To build just one, replace the whole make chain
+  # with a single line, e.g.:  make MAINTARGET=ath79 SUBTARGET=tiny MAKE_ARGS="$J"
+  # and narrow the copy below to that target dir (firmware/targets/ath79/tiny/).
 
   # ath79 (mips_24kc)
   make MAINTARGET=ath79   SUBTARGET=generic                   MAKE_ARGS="$J" &&
@@ -306,6 +237,14 @@ ls -la aredn-out/          # confirm the images are really here ...
 docker rm aredn-builder    # ... and only then discard the container + build tree
 ```
 
+To iterate without rebuilding the cross-toolchain, **keep the container** (skip the
+final `docker rm`) and re-run later with `docker start aredn-builder` + `docker exec
+aredn-builder bash -lc 'cd ~/aredn-build && git pull --no-rebase --no-edit -X ours origin mcar/tiny-xm &&
+make ...'`, which reuses the toolchain, download cache, and compiled objects. A build
+interrupted mid-compile can leave the tree in a state `make` will not untangle; if a
+reused build starts erroring oddly, scrap it (`docker rm -f aredn-builder`) and start
+fresh.
+
 Notes:
 * This builds **five CPU architectures**, so it pulls a separate toolchain for
   each — expect **tens of GB** of container scratch space (well beyond the ~10GB
@@ -322,8 +261,9 @@ Notes:
   so each run re-downloads sources and rebuilds the toolchain.
 * **On WSL**, use a Linux-filesystem output dir (e.g. `aredn-out` under `~`), not a
   `/mnt/c/...` Windows path — `docker cp` fails with `permission denied` writing to
-  the Windows drive — and verify `ls -la aredn-out/` before `docker rm` (see the
-  single-target recipe's WSL note above).
+  the Windows drive — and verify `ls -la aredn-out/` before `docker rm`. To get the
+  images into Windows afterward, copy them once extracted
+  (`cp ~/aredn-out/*.bin /mnt/c/Users/<you>/...`).
 * The `&&` between lines aborts the whole run on the first failure. Use `;`
   instead if you would rather build best-effort and keep going past a target that
   fails, then copy out whatever succeeded.
