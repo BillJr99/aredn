@@ -335,9 +335,12 @@ if (dhcp_mask) {
     let dhcp_start = int(cfg.dhcp_start);
     let dhcp_end = int(cfg.dhcp_end);
     if (dhcp_size > 0 && dhcp_end >= dhcp_size) {
-        if (dhcp_start < 2) {
-            dhcp_start = 2; // offset 0 is the network base, offset 1 the gateway
-        }
+        // Reclaim the low offsets (2..4) so a small LAN subnet hands out its
+        // full host pool. Offset 0 is the network base and offset 1 is the
+        // gateway, so 2 is the first leasable host. Assigning 2 mirrors the DMZ
+        // reflow (dmz_dhcp_start = 2); merely flooring start at 2 left the /24
+        // default (start 5) in place and capped a /28 at 10 leases instead of 13.
+        dhcp_start = 2;
         dhcp_end = dhcp_size - 1; // last usable host before the broadcast address
         if (dhcp_start > dhcp_end) {
             dhcp_start = dhcp_end; // tiny subnets (e.g. /30)

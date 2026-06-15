@@ -122,9 +122,10 @@ if (request.env.REQUEST_METHOD === "PUT") {
             let dhcp_start = configuration.getSettingAsInt("dhcp_start", 5);
             let dhcp_end = configuration.getSettingAsInt("dhcp_end", 25);
             if (dhcp_size > 0 && dhcp_end >= dhcp_size) {
-                if (dhcp_start < 2) {
-                    dhcp_start = 2;
-                }
+                // Mirror the DMZ reflow (dmz_dhcp_start = 2) so a small LAN
+                // subnet uses its full host pool; flooring at 2 would leave a
+                // default start of 5 in place and under-fill the subnet.
+                dhcp_start = 2;
                 dhcp_end = dhcp_size - 1;
                 if (dhcp_start > dhcp_end) {
                     dhcp_start = dhcp_end;
