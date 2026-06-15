@@ -113,6 +113,37 @@ export function CIDRToNetmask(cidr)
     }
 };
 
+// Broadcast offset (number of addresses - 1) of the subnet described by the
+// given LAN netmask string, e.g. 255.255.255.240 (/28) -> 15. This is the
+// highest offset from the network base and equals the offset of the broadcast
+// address. Returns 0 if the netmask cannot be parsed.
+export function netmaskToBroadcastOffset(mask)
+{
+    const m = iptoarr(mask);
+    if (!m) {
+        return 0;
+    }
+    return (65535 - ((m[2] << 8) + m[3])) & 0xffff;
+};
+
+// The DHCP pool is stored as integer offsets from the LAN network base. Offset 0
+// is the network base and offset 1 is the gateway, so the first leasable host is
+// offset 2 and the last is the offset just below the broadcast address. Given a
+// subnet's broadcast offset (see netmaskToBroadcastOffset), return the
+// { start, end } offsets that hand out the subnet's full host pool, clamping
+// tiny subnets (e.g. /30) where there is at most one usable host. This is the
+// single source of truth shared by the node-setup re-fit, the network.ut re-fit
+// and the DMZ reflow so the three cannot drift apart.
+export function fitDHCPPool(broadcast)
+{
+    let start = 2;
+    let end = broadcast - 1;
+    if (start > end) {
+        start = end;
+    }
+    return { start, end };
+};
+
 export function mac2ipv6ll(macaddr)
 {
     const mac = split(macaddr, ":");

@@ -55,8 +55,9 @@ if (request.env.REQUEST_METHOD === "PUT") {
                 dmz_lan_mask = arrtoip([ (dmz_lan_mask >> 24) & 0xff, (dmz_lan_mask >> 16) & 0xff, (dmz_lan_mask >> 8) & 0xff, dmz_lan_mask & 0xff ]);
                 configuration.setSetting("dmz_lan_ip", dmz_lan_ip);
                 configuration.setSetting("dmz_lan_mask", dmz_lan_mask);
-                configuration.setSetting("dmz_dhcp_start", 2);
-                configuration.setSetting("dmz_dhcp_end", (2 << (mode - 1)) - 2);
+                const dmz_pool = network.fitDHCPPool((2 << (mode - 1)) - 1);
+                configuration.setSetting("dmz_dhcp_start", dmz_pool.start);
+                configuration.setSetting("dmz_dhcp_end", dmz_pool.end);
                 const dhcp = configuration.getDHCP();
                 const als = uciMesh.get("setup", "aliases", "alias");
                 if (als) {
@@ -116,23 +117,13 @@ if (request.env.REQUEST_METHOD === "PUT") {
     // re-fit when the end offset overflows the subnet, leaving the /24 default
     // untouched. node-setup applies the same fit authoritatively at apply time.
     if ("lan_dhcp_netmask" in request.args || "lan44_dhcp_netmask" in request.args) {
-        const dhcp_mask = iptoarr(configuration.getSettingAsString("lan_mask"));
-        if (dhcp_mask) {
-            const dhcp_size = (65535 - ((dhcp_mask[2] << 8) + dhcp_mask[3])) & 0xffff;
-            let dhcp_start = configuration.getSettingAsInt("dhcp_start", 5);
-            let dhcp_end = configuration.getSettingAsInt("dhcp_end", 25);
-            if (dhcp_size > 0 && dhcp_end >= dhcp_size) {
-                // Mirror the DMZ reflow (dmz_dhcp_start = 2) so a small LAN
-                // subnet uses its full host pool; flooring at 2 would leave a
-                // default start of 5 in place and under-fill the subnet.
-                dhcp_start = 2;
-                dhcp_end = dhcp_size - 1;
-                if (dhcp_start > dhcp_end) {
-                    dhcp_start = dhcp_end;
-                }
-                configuration.setSetting("dhcp_start", dhcp_start);
-                configuration.setSetting("dhcp_end", dhcp_end);
-            }
+        // Mirror the node-setup re-fit via the shared network.fitDHCPPool so the
+        // UI value agrees with what is committed at apply time.
+        const dhcp_size = network.netmaskToBroadcastOffset(configuration.getSettingAsString("lan_mask"));
+        if (dhcp_size > 0 && configuration.getSettingAsInt("dhcp_end", 25) >= dhcp_size) {
+            const pool = network.fitDHCPPool(dhcp_size);
+            configuration.setSetting("dhcp_start", pool.start);
+            configuration.setSetting("dhcp_end", pool.end);
         }
     }
     if ("wan_mode" in request.args) {
