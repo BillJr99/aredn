@@ -143,6 +143,82 @@ An internet connection is required during the build process. A good internet con
 
 You need approximately 10GB of space for the build.
 
+#### One-shot, no-trace Docker build for all targets (layered on `main`)
+
+This recipe builds **every supported target** inside a throwaway container,
+layering this fork branch on top of upstream `main`. Everything (the clone, the
+OpenWrt tree, all intermediate files) lives inside the container; only the finished
+`.bin` images are copied out, and the container is deleted at the end, so nothing is
+left behind. It works the same from WSL, Linux, or macOS.
+
+The build runs as the image's unprivileged `aredn` user (OpenWrt refuses to build
+as `root`), which cannot write into a host bind-mount. So instead of mounting a
+folder, build in a **named** container, stage the images to a directory *inside* it,
+then copy them to the host with `docker cp` (which runs with host privileges):
+
+```
+bash
+mkdir -p aredn-out
+docker run --name aredn-builder arednmesh/builder bash -lc '
+  git clone --branch main https://github.com/BillJr99/aredn.git ~/aredn-build &&
+  cd ~/aredn-build &&
+  # A throwaway git identity is needed because layering a branch makes a merge commit.
+  git config user.email aredn-build@example.invalid && git config user.name "AREDN build" &&
+  # Layer this fork branch onto main. Repeat this line to bring in additional
+  # branches, e.g. also run:  git pull --no-rebase --no-edit -X ours origin mcar/wireguard-mtu
+  # The fork branches touch disjoint firmware files, so the code always merges
+  # cleanly; `-X ours` only matters for this README (each branch customizes it) and
+  # simply keeps the first branch's copy — irrelevant to what gets built.
+  git pull --no-rebase --no-edit -X ours origin mcar/wireguard-mtu &&
+  J="-j$(nproc)" &&   # parallelize across all CPU cores
+
+  # Builds EVERY target below. To build just one, replace the whole make chain
+  # with a single line, e.g.:  make MAINTARGET=ath79 SUBTARGET=generic MAKE_ARGS="$J"
+  # and narrow the copy below to that target dir (firmware/targets/ath79/generic/).
+
+  # ath79 (mips_24kc)
+  make MAINTARGET=ath79   SUBTARGET=generic                   MAKE_ARGS="$J" &&
+  make MAINTARGET=ath79   SUBTARGET=mikrotik                  MAKE_ARGS="$J" &&
+  make MAINTARGET=ath79   SUBTARGET=mikrotik ALTTARGET=ath10k MAKE_ARGS="$J" &&
+  make MAINTARGET=ath79   SUBTARGET=mikrotik ALTTARGET=nand   MAKE_ARGS="$J" &&
+  make MAINTARGET=ath79   SUBTARGET=nand                      MAKE_ARGS="$J" &&
+
+  # ipq40xx (arm_cortex-a7)
+  make MAINTARGET=ipq40xx SUBTARGET=generic                  MAKE_ARGS="$J" &&
+  make MAINTARGET=ipq40xx SUBTARGET=mikrotik                 MAKE_ARGS="$J" &&
+
+  # ramips (mipsel_24kc), incl. MorseMicro HaLow variants
+  make MAINTARGET=ramips  SUBTARGET=mt7621                   MAKE_ARGS="$J" &&
+  make MAINTARGET=ramips  SUBTARGET=mt7621 ALTTARGET=morse   MAKE_ARGS="$J" &&
+  make MAINTARGET=ramips  SUBTARGET=mt76x8                   MAKE_ARGS="$J" &&
+  make MAINTARGET=ramips  SUBTARGET=mt76x8 ALTTARGET=morse   MAKE_ARGS="$J" &&
+
+  # mediatek (aarch64) and x86
+  make MAINTARGET=mediatek SUBTARGET=filogic                MAKE_ARGS="$J" &&
+  make MAINTARGET=x86      SUBTARGET=64                      MAKE_ARGS="$J" &&
+
+  # stage every built image into a directory inside the container
+  mkdir -p ~/out && cp -rv firmware/targets/* ~/out/
+'
+# pull the finished images out from the host side
+docker cp aredn-builder:/home/aredn/out/. aredn-out/
+ls -la aredn-out/          # confirm the images are really here ...
+docker rm aredn-builder    # ... and only then discard the container + build tree
+```
+
+`MAKE_ARGS="-j$(nproc)"` builds in parallel across all CPU cores — the single
+biggest speedup. The full set takes a long time; to iterate, **keep the container**
+(skip the final `docker rm`) and re-run later with `docker start aredn-builder` +
+`docker exec aredn-builder bash -lc 'cd ~/aredn-build && ... && make ...'`, which
+reuses the toolchain, download cache, and compiled objects.
+
+> **On WSL, point the output dir at the Linux filesystem, not `/mnt/c`.** `docker cp`
+> (via Docker Desktop) cannot reliably write into a Windows drive mounted at
+> `/mnt/c/...` and fails with `permission denied`. Run from a Linux-filesystem path
+> (e.g. `cd ~` and use `aredn-out` there), and **verify `ls -la aredn-out/` before
+> running `docker rm`**. To get the images into Windows afterward, copy them once
+> they are safely extracted (`cp ~/aredn-out/*.bin /mnt/c/Users/<you>/...`).
+
 ### How to build prior builds of AREDN®
 
 Prior AREDN® images can be rebuilt.  Replace one of the following after

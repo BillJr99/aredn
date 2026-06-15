@@ -571,7 +571,11 @@ if (is_supernode && wg_begin && match(wg_begin, /^172\.31\./)) {
     cm.set("wireguard", "@network[0]", "begin", wg_begin);
     cm.commit("wireguard");
 }
-let wg_mtu_override = cm.get("wireguard", "@network[0]", "mtu") ?? "";
+// Default WireGuard tunnel MTU to 1280 (the IPv6 minimum) so tunnels work over
+// constrained paths (cellular/CGNAT, IPv6 encapsulation, Starlink) where the
+// usual 1420 MTU exceeds the effective path MTU and PMTUD is filtered. An
+// operator can still override this by setting wireguard.@network[0].mtu.
+let wg_mtu_override = cm.get("wireguard", "@network[0]", "mtu") ?? "1280";
 if (wg_mtu_override) {
     wg_mtu_override = `\toption mtu '${wg_mtu_override}'\n`;
 }
