@@ -225,6 +225,36 @@ reuses the toolchain, download cache, and compiled objects.
 Prior AREDN® images can be rebuilt.  Replace one of the following after
 the "cd aredn" command above:
 
+AREDN® release 4.26.7.0
+
+```
+git checkout 4.26.7.0
+```
+
+AREDN® release 4.26.1.0
+
+```
+git checkout 4.26.1.0
+```
+
+AREDN® release 3.25.10.0
+
+```
+git checkout 3.25.10.0
+```
+
+AREDN® release 3.25.8.0
+
+```
+git checkout 3.25.8.0
+```
+
+AREDN® release 3.25.5.1
+
+```
+git checkout 3.25.5.1
+```
+
 AREDN® release 3.25.5.0
 
 ```
