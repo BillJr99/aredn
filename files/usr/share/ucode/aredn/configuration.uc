@@ -76,9 +76,6 @@ const configFiles = [
     "/etc/arednlink/subscribe",
     "/etc/local/uci/hsmmmesh",
     "/etc/aredn_include/babel-deny.conf",
-    "/etc/aredn_include/dtdlink.network.user",
-    "/etc/aredn_include/lan.network.user",
-    "/etc/aredn_include/wan.network.user",
     "/etc/dropbear/authorized_keys",
     "/tmp/newpassword"
 ];
@@ -125,13 +122,37 @@ export function getSettingAsInt(key, def)
     return def;
 };
 
-export function setSetting(key, value, def)
+export function getSettingAsList(key, def)
+{
+    initSetup();
+    return scursor.get("setup", "globals", key) || def;
+};
+
+export function setSettingAsString(key, value, def)
 {
     initSetup();
     const o = scursor.get("setup", "globals", key);
     const n = replace(`${value ?? def ?? ""}`, /[\r\n]/g, " ");
     if (o !== n) {
         scursor.set("setup", "globals", key, n);
+        setupChanged = true;
+        return true;
+    }
+    return false;
+};
+
+export function setSettingAsList(key, value, def)
+{
+    initSetup();
+    const o = scursor.get("setup", "globals", key) ?? "";
+    if (type(value) !== "array") {
+        value = type(def) === "array" ? def : [];
+    }
+    if (length(value) === 0) {
+        value = "";
+    }
+    if (sprintf("%$J", o) !== sprintf("%J", value)) {
+        scursor.set("setup", "globals", key, value);
         setupChanged = true;
         return true;
     }
@@ -190,6 +211,11 @@ export function getDefaultIP()
     else {
         return "192.168.1.1";
     }
+};
+
+export function getIP()
+{
+    return uci.cursor().get("network", "mesh", "ipaddr");
 };
 
 export function setPassword(passwd)
@@ -252,6 +278,16 @@ export function getDHCP(mode)
             cidr: network.netmaskToCIDR(setup.dmz_lan_mask)
         };
     }
+};
+
+export function getActiveNetworkInterfaceNames(net)
+{
+    initSetup();
+    const ports = scursor.get("setup", "globals", `${net}_intf`);
+    if (ports) {
+        return ports;
+    }
+    return hardware.getBoardNetworkInterfaceName(net);
 };
 
 function copyConfig(configRoot)
@@ -489,14 +525,17 @@ export function restoreTunnels(tunnelBackupFilename)
 
 export function supportdata(supportdatafilename)
 {
-    const c = uci.cursor();
-    const wifiiface = c.get("network", "wifi", "device");
-
-    let doscan = false;
-    c.foreach("wireless", "wifi-iface", function(s)
+    const wifiiface0 = fs.access("/sys/class/net/wlan0") ? "wlan0" : null;
+    const wifiiface1 = fs.access("/sys/class/net/wlan1") ? "wlan1" : null;
+    let doscan0 = false;
+    let doscan1 = false;
+    uci.cursor().foreach("wireless", "wifi-iface", function(s)
     {
-        if (s.ifname == wifiiface && s.mode === "adhoc") {
-            doscan = true;
+        if (s.ifname == wifiiface0 && s.mode === "adhoc") {
+            doscan0 = true;
+        }
+        if (s.ifname == wifiiface1 && s.mode === "adhoc") {
+            doscan1 = true;
         }
     });
 
@@ -520,12 +559,11 @@ export function supportdata(supportdatafilename)
         "/tmp/service-validation-state.json",
         "/tmp/sysinfo",
         "/tmp/dhcp.leases",
-        "/sys/kernel/debug/ieee80211/phy0/ath9k/ack_to",
-        "/sys/kernel/debug/ieee80211/phy1/ath9k/ack_to",
         "/proc/net/nf_conntrack",
         "/var/etc/babel-active.conf",
         "/var/run/hostapd-wlan0.maclist",
-        "/var/run/hostapd-wlan1.maclist"
+        "/var/run/hostapd-wlan1.maclist",
+        "/sys/kernel/debug/spi-nor/spi0.0/params"
     ];
     const sensitive = [
         "/etc/config/network",
@@ -554,11 +592,16 @@ export function supportdata(supportdatafilename)
         "ip rule list",
         "netstat -aln",
         "iwinfo",
-        `${wifiiface ? "iwinfo " + wifiiface + " assoclist" : ""}`,
-        `${wifiiface ? "iw phy " + hardware.getPhyDevice(wifiiface) + " info" : ""}`,
-        `${wifiiface ? "iw dev " + wifiiface + " info" : ""}`,
-        `${wifiiface && doscan ? "iw dev " + wifiiface + " scan" : ""}`,
-        `${wifiiface ? "iw dev " + wifiiface + " station dump" : ""}`,
+        `${wifiiface0 ? "iwinfo " + wifiiface0 + " assoclist" : ""}`,
+        `${wifiiface0 ? "iw phy " + hardware.getPhyDevice(wifiiface0) + " info" : ""}`,
+        `${wifiiface0 ? "iw dev " + wifiiface0 + " info" : ""}`,
+        `${wifiiface0 && doscan0 ? "iw dev " + wifiiface0 + " scan" : ""}`,
+        `${wifiiface0 ? "iw dev " + wifiiface0 + " station dump" : ""}`,
+        `${wifiiface1 ? "iwinfo " + wifiiface1 + " assoclist" : ""}`,
+        `${wifiiface1 ? "iw phy " + hardware.getPhyDevice(wifiiface1) + " info" : ""}`,
+        `${wifiiface1 ? "iw dev " + wifiiface1 + " info" : ""}`,
+        `${wifiiface1 && doscan1 ? "iw dev " + wifiiface1 + " scan" : ""}`,
+        `${wifiiface1 ? "iw dev " + wifiiface1 + " station dump" : ""}`,
         "wg show all",
         "wg show all latest-handshakes",
         "nft list ruleset",
@@ -566,7 +609,6 @@ export function supportdata(supportdatafilename)
         "babel-dump",
         "/usr/local/bin/arednlink-dump",
         "ls -l /var/run/arednlink/*/*",
-        "echo /all | nc 127.0.0.1 2006",
         "apk info",
         "ps -w",
         "/usr/local/bin/get_hardwaretype",
