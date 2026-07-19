@@ -36,6 +36,7 @@ import * as uci from "uci";
 import * as configuration from "aredn.configuration";
 import * as hardware from "aredn.hardware";
 import * as lqm from "aredn.lqm";
+import * as radios from "aredn.radios";
 
 function parseMessages(nodename, msgs, text)
 {
@@ -86,17 +87,19 @@ export function getToDos()
         push(todos, "Set the timezone");
     }
     if (hardware.getRadioCount() > 0) {
-        const wlan = cursor.get("network", "wifi", "device");
-        const ants = hardware.getAntennas(wlan);
-        const ant = cursor.get("aredn", "@location[0]", "antenna");
-        if (length(ants) > 1 && !ant) {
-            push(todos, "Select an antenna");
-        }
-        else if (ant || length(ants) === 1) {
-            if (!cursor.get("aredn", "@location[0]", "azimuth")) {
-                const ainfo = hardware.getAntennaInfo(wlan, ant || ants[0]);
-                if (ainfo?.beamwidth !== 360) {
-                    push(todos, "Set antenna azimuth");
+        const wlan = radios.getMeshRadios()[0]?.iface;
+        if (wlan) {
+            const ants = hardware.getAntennas(wlan);
+            const ant = cursor.get("aredn", "@location[0]", "antenna");
+            if (length(ants) > 1 && !ant) {
+                push(todos, "Select an antenna");
+            }
+            else if (ant || length(ants) === 1) {
+                if (!cursor.get("aredn", "@location[0]", "azimuth")) {
+                    const ainfo = hardware.getAntennaInfo(wlan, ant || ants[0]);
+                    if (ainfo?.beamwidth !== 360) {
+                        push(todos, "Set antenna azimuth");
+                    }
                 }
             }
         }
@@ -116,24 +119,5 @@ export function getToDos()
 
 export function getAlerts()
 {
-    const alerts = [];
-    const lqmInfo = lqm.get();
-    const now = lqmInfo.now;
-    if (now - lqmInfo.start > 600) {
-        const trackers = lqmInfo.trackers;
-        let count = 0;
-        let total = 0;
-        for (let mac in trackers)
-        {
-            const tracker = trackers[mac];
-            if (tracker.type === "Wireguard" && tracker.lastseen + 120 >= now) {
-                total += tracker.avg_lq;
-                count++;
-            }
-        }
-        if (count > 0 && total / count < 85) {
-            push(alerts, "Some tunnel rx values are lower than ideal. You may need to reduce the number of tunnels hosted by this node.");
-        }
-    }
-    return alerts;
+    return [];
 };

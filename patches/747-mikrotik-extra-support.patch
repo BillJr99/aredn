@@ -247,7 +247,7 @@
 +	$(call Device/mikrotik_nor)
 +	DEVICE_MODEL := RouterBOARD LDF 5 AC (RBLDFG-5acD)
 +	SOC := qcom-ipq4018
-+	DEVICE_PACKAGES := rssileds
++	DEVICE_PACKAGES := rssileds -kmod-ath10k-ct kmod-ath10k-ct-smallbuffers
 +endef
 +TARGET_DEVICES += mikrotik_ldf-5acd
 +
@@ -255,7 +255,7 @@
 +	$(call Device/mikrotik_nor)
 +	DEVICE_MODEL := RouterBOARD LHG 5 AC
 +	SOC := qcom-ipq4018
-+	DEVICE_PACKAGES := rssileds
++	DEVICE_PACKAGES := rssileds -kmod-ath10k-ct kmod-ath10k-ct-smallbuffers
 +endef
 +TARGET_DEVICES += mikrotik_lhgg-5acd
 +
@@ -263,7 +263,7 @@
 +	$(call Device/mikrotik_nor)
 +	DEVICE_MODEL := RouterBOARD LHG 5 AC XL
 +	SOC := qcom-ipq4018
-+	DEVICE_PACKAGES := rssileds
++	DEVICE_PACKAGES := rssileds -kmod-ath10k-ct kmod-ath10k-ct-smallbuffers
 +endef
 +TARGET_DEVICES += mikrotik_lhgg-5acd-xl
 +
@@ -749,7 +749,7 @@
  	mikrotik,routerboard-sxt-5nd-r2|\
 --- a/target/linux/ath79/mikrotik/base-files/lib/upgrade/platform.sh
 +++ b/target/linux/ath79/mikrotik/base-files/lib/upgrade/platform.sh
-@@ -32,7 +32,9 @@
+@@ -32,7 +32,10 @@
  	mikrotik,routerboard-493g|\
  	mikrotik,routerboard-911g-5hpacd|\
  	mikrotik,routerboard-911g-xhpnd|\
@@ -757,6 +757,7 @@
  	mikrotik,routerboard-912uag-2hpnd|\
 +	mikrotik,routerboard-912uag-5hpnd|\
  	mikrotik,routerboard-921gs-5hpacd-15s|\
++	mikrotik,routerboard-921gs-5hpacd-19s|\
  	mikrotik,routerboard-922uags-5hpacd|\
  	mikrotik,routerboard-951g-2hnd|\
 --- a/target/linux/ath79/mikrotik/base-files/etc/board.d/05_compat-version
